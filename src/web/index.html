@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatio-Temporal Event Analytics Dashboard</title>
+    <meta name="description" content="Interactive visualization for KD-Tree + Fenwick Tree event analytics">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="title">
+                <span class="icon">🌍</span>
+                Spatio-Temporal Event Analytics
+            </h1>
+            <p class="subtitle">KD-Tree + Fenwick Tree Query Engine</p>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+        <div class="container">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Events</div>
+                        <div class="stat-value" id="totalEvents">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Avg Query Time</div>
+                        <div class="stat-value" id="avgQueryTime">0 ms</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔍</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Queries Run</div>
+                        <div class="stat-value" id="queriesRun">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Last Result</div>
+                        <div class="stat-value" id="lastResult">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="content-grid">
+                <!-- Map Visualization -->
+                <div class="panel map-panel">
+                    <div class="panel-header">
+                        <h2>📍 Event Map</h2>
+                        <button class="btn-secondary" onclick="resetMap()">Reset View</button>
+                    </div>
+                    <div class="map-container" id="mapContainer">
+                        <canvas id="eventCanvas" width="800" height="600"></canvas>
+                        <div class="map-overlay" id="mapOverlay">
+                            Click and drag to select query region → Auto-fills coordinates
+                        </div>
+                    </div>
+                    <div class="map-info">
+                        <span id="mapCoords">Hover over map to see coordinates</span>
+                    </div>
+                </div>
+
+                <!-- Query Controls -->
+                <div class="panel controls-panel">
+                    <div class="panel-header">
+                        <h2>🔧 Query Controls</h2>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Spatial Range</label>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>X1 (Lat)</label>
+                                <input type="number" id="x1" step="0.01" value="41.80" class="input-field">
+                            </div>
+                            <div class="input-group">
+                                <label>Y1 (Lon)</label>
+                                <input type="number" id="y1" step="0.01" value="-87.70" class="input-field">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>X2 (Lat)</label>
+                                <input type="number" id="x2" step="0.01" value="41.92" class="input-field">
+                            </div>
+                            <div class="input-group">
+                                <label>Y2 (Lon)</label>
+                                <input type="number" id="y2" step="0.01" value="-87.60" class="input-field">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Temporal Range (Minutes of Day)</label>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Start Time</label>
+                                <input type="range" id="t1" min="0" max="1439" value="0" class="slider">
+                                <span id="t1Display" class="time-display">00:00</span>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>End Time</label>
+                                <input type="range" id="t2" min="0" max="1439" value="1439" class="slider">
+                                <span id="t2Display" class="time-display">23:59</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="quick-queries">
+                        <label class="control-label">Quick Time Ranges</label>
+                        <div class="btn-group">
+                            <button class="btn-quick" onclick="setTimeRange(0, 360)">Night<br>(12-6 AM)</button>
+                            <button class="btn-quick" onclick="setTimeRange(360, 720)">Morning<br>(6-12 PM)</button>
+                            <button class="btn-quick" onclick="setTimeRange(720, 1080)">Afternoon<br>(12-6 PM)</button>
+                            <button class="btn-quick" onclick="setTimeRange(1080, 1440)">Evening<br>(6-12 AM)</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="runQuery()">
+                        <span class="btn-icon">🚀</span>
+                        Execute Query
+                    </button>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="panel results-panel">
+                    <div class="panel-header">
+                        <h2>📈 Query Results</h2>
+                        <button class="btn-secondary" onclick="clearResults()">Clear</button>
+                    </div>
+                    <div id="resultsContainer" class="results-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <p>No queries executed yet</p>
+                            <p class="empty-hint">Configure parameters and click "Execute Query"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temporal Heatmap -->
+                <div class="panel heatmap-panel">
+                    <div class="panel-header">
+                        <h2>🔥 Temporal Heatmap</h2>
+                    </div>
+                    <canvas id="heatmapCanvas" width="800" height="200"></canvas>
+                    <div class="heatmap-legend">
+                        <span>0:00</span>
+                        <span>6:00</span>
+                        <span>12:00</span>
+                        <span>18:00</span>
+                        <span>24:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>Built for DSA Semester 3 | KD-Tree + Fenwick Tree Implementation</p>
+            <p class="footer-note">Dataset: Real Chicago Crime Data (9,951 incidents) | Algorithm Complexity: O(√N log
+                T)</p>
+        </div>
+    </footer>
+
+    <script src="realdata.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
