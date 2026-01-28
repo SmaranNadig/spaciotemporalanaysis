@@ -57,7 +57,7 @@ export function QueryResults({ results, onClear }: QueryResultsProps) {
                                     {/* Result header */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+                                            <div className="flex h-10 min-w-[40px] w-auto items-center justify-center rounded-lg bg-primary/20 px-2">
                                                 <span className="font-mono text-lg font-bold text-primary">
                                                     {result.count.toLocaleString()}
                                                 </span>

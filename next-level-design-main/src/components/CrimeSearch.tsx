@@ -1,14 +1,18 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, MapPin, Clock, AlertCircle } from 'lucide-react';
-import { Event, QueryParams } from '../types';
+import { Search, Filter, MapPin, Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Event, QueryParams, DatasetType } from '../types';
 import { minutesToTime } from '../utils/queryEngine';
+
+type CaseStatusFilter = 'all' | 'open' | 'closed';
 
 interface CrimeSearchProps {
     events: Event[];
     currentParams: QueryParams;
     onResultsFound: (matchingEvents: Event[]) => void;
+    activeDataset?: DatasetType;
 }
+
 
 // Crime similarity mappings for intelligent search
 const CRIME_SIMILARITY: Record<string, string[]> = {
@@ -24,11 +28,13 @@ const CRIME_SIMILARITY: Record<string, string[]> = {
     'WEAPONS': ['ASSAULT', 'HOMICIDE'],
 };
 
-export function CrimeSearch({ events, currentParams, onResultsFound }: CrimeSearchProps) {
+export function CrimeSearch({ events, currentParams, onResultsFound, activeDataset = 'chicago' }: CrimeSearchProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [includeSimilar, setIncludeSimilar] = useState(true);
+    const [caseStatusFilter, setCaseStatusFilter] = useState<CaseStatusFilter>('all');
     const [results, setResults] = useState<Event[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
 
     // Get all unique crime types from the dataset
     const availableTypes = useMemo(() => {
@@ -62,6 +68,7 @@ export function CrimeSearch({ events, currentParams, onResultsFound }: CrimeSear
             // 1. Crime type match
             // 2. Within current spatial bounds
             // 3. Within current temporal range
+            // 4. Case status (for India dataset only)
             const matchingEvents = events.filter(event => {
                 // Check crime type
                 const typeMatch = event.type && searchTerms.some(term =>
@@ -82,7 +89,17 @@ export function CrimeSearch({ events, currentParams, onResultsFound }: CrimeSear
                     event.time >= Math.min(currentParams.t1, currentParams.t2) &&
                     event.time <= Math.max(currentParams.t1, currentParams.t2);
 
-                return inSpatialRange && inTemporalRange;
+                // Check case status (only for India dataset when filter is not 'all')
+                let caseStatusMatch = true;
+                if (activeDataset === 'india' && caseStatusFilter !== 'all') {
+                    if (caseStatusFilter === 'closed') {
+                        caseStatusMatch = event.caseClosed === true;
+                    } else if (caseStatusFilter === 'open') {
+                        caseStatusMatch = event.caseClosed === false;
+                    }
+                }
+
+                return inSpatialRange && inTemporalRange && caseStatusMatch;
             });
 
             setResults(matchingEvents);
@@ -132,7 +149,7 @@ export function CrimeSearch({ events, currentParams, onResultsFound }: CrimeSear
                 </div>
 
                 {/* Options */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-4">
                     <label className="flex items-center gap-2 cursor-pointer group">
                         <input
                             type="checkbox"
@@ -144,6 +161,44 @@ export function CrimeSearch({ events, currentParams, onResultsFound }: CrimeSear
                             Include similar crime types
                         </span>
                     </label>
+
+                    {/* Case Status Filter - Only for India */}
+                    {activeDataset === 'india' && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500 font-medium">Case Status:</span>
+                            <div className="flex rounded-lg overflow-hidden border border-white/10">
+                                <button
+                                    onClick={() => setCaseStatusFilter('all')}
+                                    className={`px-3 py-1.5 text-xs font-medium transition-all ${caseStatusFilter === 'all'
+                                            ? 'bg-primary/20 text-primary'
+                                            : 'bg-black/20 text-slate-400 hover:text-white'
+                                        }`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setCaseStatusFilter('open')}
+                                    className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-all border-l border-white/10 ${caseStatusFilter === 'open'
+                                            ? 'bg-red-500/20 text-red-400'
+                                            : 'bg-black/20 text-slate-400 hover:text-white'
+                                        }`}
+                                >
+                                    <XCircle className="w-3 h-3" />
+                                    Open
+                                </button>
+                                <button
+                                    onClick={() => setCaseStatusFilter('closed')}
+                                    className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-all border-l border-white/10 ${caseStatusFilter === 'closed'
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-black/20 text-slate-400 hover:text-white'
+                                        }`}
+                                >
+                                    <CheckCircle className="w-3 h-3" />
+                                    Closed
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Quick Type Suggestions */}

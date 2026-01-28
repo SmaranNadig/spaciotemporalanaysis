@@ -14,16 +14,36 @@ const StatCard: React.FC<Props> = ({ title, value, subtitle, icon, color, delay 
     const numericValue = typeof value === 'number' ? value : parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
     const isNumeric = typeof value === 'number' || !isNaN(parseFloat(value as string));
 
+    const [displayState, setDisplayState] = useState(value);
+
     const springValue = useSpring(0, { stiffness: 60, damping: 20 });
-    const displayValue = useTransform(springValue, (latest) =>
-        isNumeric ? Math.floor(latest).toLocaleString() : value
-    );
 
     useEffect(() => {
         if (isNumeric) {
             springValue.set(numericValue);
+        } else {
+            setDisplayState(value);
         }
-    }, [numericValue, isNumeric, springValue]);
+    }, [numericValue, isNumeric, springValue, value]);
+
+    useEffect(() => {
+        if (!isNumeric) return;
+
+        return springValue.on("change", (latest) => {
+            if (typeof value === 'string' && value.includes('.')) {
+                // If the original string had decimals, maintain them
+                const decimalPart = value.split('.')[1].split(' ')[0];
+                const precision = decimalPart.length;
+                const formattedNum = latest.toFixed(precision);
+                const suffix = value.includes(' ') ? ` ${value.split(' ')[1]}` : value.replace(/[0-9.]/g, '');
+                setDisplayState(`${formattedNum}${suffix}`);
+            } else if (typeof value === 'number' && !Number.isInteger(value)) {
+                setDisplayState(latest.toFixed(2));
+            } else {
+                setDisplayState(Math.floor(latest).toLocaleString());
+            }
+        });
+    }, [springValue, isNumeric, value]);
 
     return (
         <motion.div
@@ -40,7 +60,7 @@ const StatCard: React.FC<Props> = ({ title, value, subtitle, icon, color, delay 
                 <div className="text-right">
                     <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${color}`}>{title}</p>
                     <motion.h3 className={`text-3xl font-bold tracking-tight font-mono-data ${color} drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]`}>
-                        {isNumeric ? <motion.span>{displayValue}</motion.span> : value}
+                        {isNumeric ? <motion.span>{displayState}</motion.span> : value}
                     </motion.h3>
                     <p className="text-[10px] font-medium text-slate-500 uppercase mt-1">{subtitle}</p>
                 </div>

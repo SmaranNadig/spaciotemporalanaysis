@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Activity,
@@ -14,7 +14,8 @@ import {
 import { toast } from 'sonner';
 
 import { realCrimeData } from '../data/realCrimeData';
-import { Event, QueryParams, QueryResult, Stats } from '../types';
+import { indianCrimeData } from '../data/indianCrimeData';
+import { Event, QueryParams, QueryResult, Stats, DatasetType, MapConfig } from '../types';
 import { executeQuery, minutesToTime, findHotspots } from '../utils/queryEngine';
 import { mapToPixel, drawBackground } from '../utils/rendering';
 
@@ -26,16 +27,54 @@ import { QueryControls } from '../components/QueryControls';
 import { QueryResults } from '../components/QueryResults';
 import { CrimeSearch } from '../components/CrimeSearch';
 import { MapLegend } from '../components/MapLegend';
+import { DatasetTabs } from '../components/DatasetTabs';
+import { InteractiveMap } from '../components/InteractiveMap';
 import Footer from '../components/Footer';
 
+// Dataset configurations
+const DATASET_CONFIGS: Record<DatasetType, MapConfig> = {
+    chicago: {
+        minX: 41.6,
+        maxX: 42.0,
+        minY: -87.9,
+        maxY: -87.5,
+        label: 'Chicago, USA',
+        defaultParams: { x1: 41.7, y1: -87.8, x2: 41.9, y2: -87.6, t1: 480, t2: 1200 }
+    },
+    india: {
+        minX: 8.0,
+        maxX: 35.0,
+        minY: 68.0,
+        maxY: 97.0,
+        label: 'India',
+        defaultParams: { x1: 12.0, y1: 72.0, x2: 28.0, y2: 85.0, t1: 480, t2: 1200 }
+    }
+};
+
 const Dashboard: React.FC = () => {
+    // Dataset switching state
+    const [activeDataset, setActiveDataset] = useState<DatasetType>('chicago');
+
+    // Get current events and config based on active dataset
+    const events = useMemo(() =>
+        activeDataset === 'chicago' ? realCrimeData : indianCrimeData,
+        [activeDataset]
+    );
+
+    const currentConfig = useMemo(() =>
+        DATASET_CONFIGS[activeDataset],
+        [activeDataset]
+    );
+
+    const mapBounds = useMemo(() => ({
+        minX: currentConfig.minX,
+        maxX: currentConfig.maxX,
+        minY: currentConfig.minY,
+        maxY: currentConfig.maxY
+    }), [currentConfig]);
+
     // State
-    const [events] = useState<Event[]>(realCrimeData);
-    const [params, setParams] = useState<QueryParams>({
-        x1: 41.7, y1: -87.8,
-        x2: 41.9, y2: -87.6,
-        t1: 480, t2: 1200
-    });
+    const [params, setParams] = useState<QueryParams>(DATASET_CONFIGS.chicago.defaultParams);
     const [stats, setStats] = useState<Stats>({
         totalEvents: realCrimeData.length,
         avgQueryTime: 0,
@@ -56,13 +95,25 @@ const Dashboard: React.FC = () => {
         current: { x: number; y: number } | null;
     }>({ isDragging: false, start: null, current: null });
 
-    // Map Bounds (Chicago)
-    const mapBounds = {
-        minX: 41.6,
-        maxX: 42.0,
-        minY: -87.9,
-        maxY: -87.5
-    };
+    // Handle dataset change
+    const handleDatasetChange = useCallback((dataset: DatasetType) => {
+        setActiveDataset(dataset);
+        // Reset to default params for the new dataset
+        setParams(DATASET_CONFIGS[dataset].defaultParams);
+        // Update stats for new dataset
+        const newEvents = dataset === 'chicago' ? realCrimeData : indianCrimeData;
+        setStats(prev => ({
+            ...prev,
+            totalEvents: newEvents.length,
+            queriesRun: 0,
+            avgQueryTime: 0,
+            lastResult: null
+        }));
+        // Clear search results
+        setSearchResults([]);
+        setHistory([]);
+        toast.success(`Switched to ${dataset === 'chicago' ? '🇺🇸 Chicago' : '🇮🇳 India'} dataset`);
+    }, []);
 
     // Execute Query
     const handleQuery = useCallback(() => {
@@ -104,18 +155,50 @@ const Dashboard: React.FC = () => {
         drawBackground(ctx, width, height);
 
         // Draw regular events
-        ctx.fillStyle = 'rgba(34, 211, 238, 0.4)'; // Cyan-400
+        // User requested Cyan for both, matches the premium 'digital' look
+        ctx.fillStyle = activeDataset === 'chicago'
+            ? 'rgba(34, 211, 238, 0.45)'
+            : 'rgba(34, 211, 238, 0.35)'; // Slightly softer for high-density India
+
         events.forEach(event => {
-            const px = mapToPixel(event.x, mapBounds.minX, mapBounds.maxX, 0, width);
-            const py = mapToPixel(event.y, mapBounds.minY, mapBounds.maxY, height, 0);
-            ctx.fillRect(px, py, 1.5, 1.5);
+            const px = mapToPixel(event.y, mapBounds.minY, mapBounds.maxY, 0, width);
+            const py = mapToPixel(event.x, mapBounds.minX, mapBounds.maxX, height, 0);
+
+            // Smaller dots for that 'screen of data' feel
+            const size = activeDataset === 'india' ? 1.2 : 1.5;
+            ctx.fillRect(px, py, size, size);
         });
+
+        // Draw City Labels for India dataset (every 1000th point of a specific city for variety)
+        if (activeDataset === 'india') {
+            const citiesToLabel = ['Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Srinagar', 'Guwahati', 'Patna'];
+            const labeled = new Set<string>();
+
+            events.forEach(event => {
+                if (event.city && citiesToLabel.includes(event.city) && !labeled.has(event.city)) {
+                    const px = mapToPixel(event.y, mapBounds.minY, mapBounds.maxY, 0, width);
+                    const py = mapToPixel(event.x, mapBounds.minX, mapBounds.maxX, height, 0);
+
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.fillText(event.city.toUpperCase(), px + 4, py - 4);
+
+                    // Tiny city marker dot
+                    ctx.beginPath();
+                    ctx.arc(px, py, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+
+                    labeled.add(event.city);
+                }
+            });
+        }
 
         // Draw Search Results (highlighted)
         if (searchResults.length > 0) {
             searchResults.forEach(event => {
-                const px = mapToPixel(event.x, mapBounds.minX, mapBounds.maxX, 0, width);
-                const py = mapToPixel(event.y, mapBounds.minY, mapBounds.maxY, height, 0);
+                const px = mapToPixel(event.y, mapBounds.minY, mapBounds.maxY, 0, width);
+                const py = mapToPixel(event.x, mapBounds.minX, mapBounds.maxX, height, 0);
 
                 // Pulsing glow effect
                 const pulse = Math.sin(Date.now() / 300) * 3;
@@ -142,17 +225,17 @@ const Dashboard: React.FC = () => {
         // Draw Hotspots (with animation)
         const hotspots = findHotspots(events);
         hotspots.forEach(hotspot => {
-            const px = mapToPixel(hotspot.x, mapBounds.minX, mapBounds.maxX, 0, width);
-            const py = mapToPixel(hotspot.y, mapBounds.minY, mapBounds.maxY, height, 0);
+            const px = mapToPixel(hotspot.y, mapBounds.minY, mapBounds.maxY, 0, width);
+            const py = mapToPixel(hotspot.x, mapBounds.minX, mapBounds.maxX, height, 0);
 
             const pulse = Math.sin(Date.now() / 400) * 5;
             ctx.beginPath();
             ctx.arc(px, py, 25 + pulse, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)'; // Red-500
+            ctx.strokeStyle = activeDataset === 'chicago' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(249, 115, 22, 0.4)';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+            ctx.fillStyle = activeDataset === 'chicago' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(249, 115, 22, 0.1)';
             ctx.fill();
         });
 
@@ -172,15 +255,15 @@ const Dashboard: React.FC = () => {
             ctx.setLineDash([]);
         } else {
             // Draw current parameter region
-            const px1 = mapToPixel(params.x1, mapBounds.minX, mapBounds.maxX, 0, width);
-            const px2 = mapToPixel(params.x2, mapBounds.minX, mapBounds.maxX, 0, width);
-            const py1 = mapToPixel(params.y1, mapBounds.minY, mapBounds.maxY, height, 0);
-            const py2 = mapToPixel(params.y2, mapBounds.minY, mapBounds.maxY, height, 0);
+            const px1 = mapToPixel(params.y1, mapBounds.minY, mapBounds.maxY, 0, width);
+            const px2 = mapToPixel(params.y2, mapBounds.minY, mapBounds.maxY, 0, width);
+            const py1 = mapToPixel(params.x1, mapBounds.minX, mapBounds.maxX, height, 0);
+            const py2 = mapToPixel(params.x2, mapBounds.minX, mapBounds.maxX, height, 0);
 
-            ctx.strokeStyle = 'rgba(192, 132, 252, 0.6)'; // Purple-400
+            ctx.strokeStyle = activeDataset === 'chicago' ? 'rgba(192, 132, 252, 0.6)' : 'rgba(251, 146, 60, 0.6)';
             ctx.lineWidth = 2;
             ctx.strokeRect(Math.min(px1, px2), Math.min(py1, py2), Math.abs(px2 - px1), Math.abs(py2 - py1));
-            ctx.fillStyle = 'rgba(192, 132, 252, 0.05)';
+            ctx.fillStyle = activeDataset === 'chicago' ? 'rgba(192, 132, 252, 0.05)' : 'rgba(251, 146, 60, 0.05)';
             ctx.fillRect(Math.min(px1, px2), Math.min(py1, py2), Math.abs(px2 - px1), Math.abs(py2 - py1));
         }
     }, [events, params, dragState, mapBounds, searchResults]);
@@ -238,12 +321,17 @@ const Dashboard: React.FC = () => {
         const canvas = mapCanvasRef.current;
         if (!canvas) return;
 
-        const x1Val = mapBounds.minX + (Math.min(dragState.start.x, dragState.current.x) / canvas.width) * (mapBounds.maxX - mapBounds.minX);
-        const x2Val = mapBounds.minX + (Math.max(dragState.start.x, dragState.current.x) / canvas.width) * (mapBounds.maxX - mapBounds.minX);
-        const y1Val = mapBounds.maxY - (Math.max(dragState.start.y, dragState.current.y) / canvas.height) * (mapBounds.maxY - mapBounds.minY);
-        const y2Val = mapBounds.maxY - (Math.min(dragState.start.y, dragState.current.y) / canvas.height) * (mapBounds.maxY - mapBounds.minY);
+        // GIS Standard: Longitude (E/W) is Horizontal (X), Latitude (N/S) is Vertical (Y)
+        // Map X Pixel -> Longitude (y)
+        const y1Val = mapBounds.minY + (Math.min(dragState.start.x, dragState.current.x) / canvas.width) * (mapBounds.maxY - mapBounds.minY);
+        const y2Val = mapBounds.minY + (Math.max(dragState.start.x, dragState.current.x) / canvas.width) * (mapBounds.maxY - mapBounds.minY);
 
-        setParams(prev => ({ ...prev, x1: x1Val, x2: x2Val, y1: y1Val, y2: y2Val }));
+        // Map Y Pixel -> Latitude (x) - Note: Canvas Y=0 is Top (Max Latitude)
+        const x1Val = mapBounds.maxY - (Math.max(dragState.start.y, dragState.current.y) / canvas.height) * (mapBounds.maxY - mapBounds.minY); // Wait, this is wrong, should be minLat/maxLat
+        const x1ValCorrect = mapBounds.minX + ((canvas.height - Math.max(dragState.start.y, dragState.current.y)) / canvas.height) * (mapBounds.maxX - mapBounds.minX);
+        const x2ValCorrect = mapBounds.minX + ((canvas.height - Math.min(dragState.start.y, dragState.current.y)) / canvas.height) * (mapBounds.maxX - mapBounds.minX);
+
+        setParams(prev => ({ ...prev, x1: x1ValCorrect, x2: x2ValCorrect, y1: y1Val, y2: y2Val }));
         setDragState({ isDragging: false, start: null, current: null });
         toast.info("Region updated from map selection");
     };
@@ -253,6 +341,21 @@ const Dashboard: React.FC = () => {
             <Header />
 
             <main className="flex-1 max-w-[1440px] w-full mx-auto p-8 space-y-8 overflow-hidden">
+
+                {/* 0. DATASET SWITCHER */}
+                <section className="flex items-center justify-between animate-fade-in-up">
+                    <DatasetTabs
+                        activeDataset={activeDataset}
+                        onDatasetChange={handleDatasetChange}
+                        chicagoCount={realCrimeData.length}
+                        indiaCount={indianCrimeData.length}
+                    />
+                    <div className="text-sm text-slate-400">
+                        <span className="font-medium text-white">{currentConfig.label}</span>
+                        <span className="mx-2">•</span>
+                        <span>{events.length.toLocaleString()} events loaded</span>
+                    </div>
+                </section>
 
                 {/* 1. STATS ROW */}
                 <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
@@ -297,29 +400,40 @@ const Dashboard: React.FC = () => {
                         <div className="absolute top-6 left-6 z-20 pointer-events-none">
                             <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10 flex items-center space-x-2">
                                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Map Engine Active</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                                    {activeDataset === 'india' ? 'Interactive Map' : 'Map Engine Active'}
+                                </span>
                             </div>
                         </div>
 
-                        <canvas
-                            ref={mapCanvasRef}
-                            width={1200}
-                            height={800}
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            className="w-full h-full object-cover cursor-crosshair"
-                        />
+                        {activeDataset === 'chicago' ? (
+                            <>
+                                <canvas
+                                    ref={mapCanvasRef}
+                                    width={1200}
+                                    height={800}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUp}
+                                    className="w-full h-full object-cover cursor-crosshair"
+                                />
 
-                        <div className="absolute bottom-6 left-6 z-20 pointer-events-none group-hover/map:opacity-100 opacity-60 transition-opacity">
-                            <div className="bg-black/60 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 flex flex-col">
-                                <span className="text-[9px] font-mono text-slate-500 tracking-tighter uppercase mb-1">INTERACTIVE CANVAS API</span>
-                                <span className="text-xs font-semibold text-white/90">Click & Drag to Select Analytics Region</span>
-                            </div>
-                        </div>
+                                <div className="absolute bottom-6 left-6 z-20 pointer-events-none group-hover/map:opacity-100 opacity-60 transition-opacity">
+                                    <div className="bg-black/60 backdrop-blur-xl px-4 py-3 rounded-xl border border-white/10 flex flex-col">
+                                        <span className="text-[9px] font-mono text-slate-500 tracking-tighter uppercase mb-1">INTERACTIVE CANVAS API</span>
+                                        <span className="text-xs font-semibold text-white/90">Click & Drag to Select Analytics Region</span>
+                                    </div>
+                                </div>
 
-                        {/* Map Legend */}
-                        <MapLegend />
+                                {/* Map Legend */}
+                                <MapLegend />
+                            </>
+                        ) : (
+                            <InteractiveMap
+                                events={events}
+                                searchResults={searchResults}
+                            />
+                        )}
                     </div>
 
                     {/* TEMPORAL HEATMAP - 1/3 Width */}
@@ -380,6 +494,7 @@ const Dashboard: React.FC = () => {
                     <CrimeSearch
                         events={events}
                         currentParams={params}
+                        activeDataset={activeDataset}
                         onResultsFound={(results) => {
                             setSearchResults(results);
                             if (results.length > 0) {

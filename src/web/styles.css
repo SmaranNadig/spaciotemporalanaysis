@@ -989,7 +989,7 @@ body::before {
     }
 
     .result-header {
-        flexdirection: column;
+        flex-direction: column;
         gap: var(--spacing-sm);
         align-items: flex-start;
     }

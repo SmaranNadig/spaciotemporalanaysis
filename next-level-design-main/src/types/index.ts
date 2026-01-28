@@ -7,6 +7,23 @@ export interface Event {
     weight: number;   // Event weight (usually 1)
     type?: string;    // Crime type (THEFT, ASSAULT, etc.)
     description?: string; // Brief description of the crime
+    // Indian dataset fields
+    caseClosed?: boolean;  // Case status (India data)
+    city?: string;         // City name (India data)
+    weapon?: string | null; // Weapon used (India data)
+    victimAge?: number | null;    // Victim age (India data)
+    victimGender?: string | null; // Victim gender (India data)
+}
+
+export type DatasetType = 'chicago' | 'india';
+
+export interface MapConfig {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+    label: string;
+    defaultParams: QueryParams;
 }
 
 export interface QueryParams {
@@ -44,3 +61,4 @@ export interface Hotspot {
     y: number;
     count: number;
 }
+

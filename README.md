@@ -72,10 +72,11 @@ dsael/
 │   │   ├── data_loader.py     # Dataset loader
 │   │   ├── preprocessor.py    # Coordinate conversion
 │   │   └── generator.py       # Test data generator
-│   └── web/                    # Visualization interface
-│       ├── index.html
-│       ├── app.js
-│       └── styles.css
+│   └── legacy_web/             # (Old) HTML Visualization
+├── next-level-design-main/      # 🆕 Premium React Frontend
+│   ├── src/
+│   ├── public/
+│   └── package.json
 ├── data/
 │   ├── chicago_crimes_sample.csv
 │   └── processed/
@@ -98,7 +99,7 @@ dsael/
 ### Prerequisites
 - C++ compiler (g++ or MSVC)
 - Python 3.8+
-- Modern web browser
+- Node.js & npm (for the frontend)
 
 ### Build & Run
 
@@ -115,9 +116,11 @@ python data_loader.py
 cd ../../build
 ./spatiotemporal.exe
 
-# 4. Open web interface
-cd ../src/web
-# Open index.html in browser
+# 4. Launch Premium Frontend
+cd ../next-level-design-main
+npm install
+npm run dev
+# Open the local URL provided (usually http://localhost:8080)
 ```
 
 ---

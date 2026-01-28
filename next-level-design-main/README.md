@@ -1,73 +1,103 @@
-# Welcome to your Lovable project
+# 🌍 Spatio-Temporal Analytics Dashboard (React + Vite)
 
-## Project info
+A premium, high-performance visualization interface for the Spatio-Temporal Event Analytics Engine. Built with **React 18**, **TypeScript**, and **Tailwind CSS**, this dashboard provides an immersive experience for analyzing spatial and temporal data.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## ✨ Key Features
 
-There are several ways of editing your application.
+This frontend represents a significant upgrade over the legacy HTML interface, featuring:
 
-**Use Lovable**
+### 🎨 Visual Excellence
+- **Glassmorphism Design**: Frosted glass panels, backdrop blurs, and depth effects.
+- **Animated Backgrounds**: Mesh gradients and floating particles for a dynamic feel.
+- **Premium Interactions**: 3D lift effects, glow animations, and magnetic hover states.
+- **Data Visualization**: Interactive canvas-based map with pulsating hotspots and temporal heatmaps.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 🛠️ Advanced Controls
+- **Spatial Queries**: Draggable map regions or precise coordinate inputs.
+- **Temporal Filtering**: Dual-range sliders for time-of-day filtering.
+- **Quick Presets**: One-click filters for "Morning Rush", "Night Shift", etc.
+- **Hotspot Detection**: Automatic visualization of high-density event clusters.
 
-Changes made via Lovable will be committed automatically to this repo.
+### ⚡ Performance
+- **Vite-Powered**: Instant HMR and lightning-fast builds.
+- **Optimized Rendering**: efficiently handles thousands of data points on the canvas.
+- **Responsive Layout**: Seamlessly adapts to desktop, tablet, and mobile screens.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Framework**: [React 18](https://react.dev/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix UI)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Animations**: CSS Transitions + Framer Motion concepts
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🚀 Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+1. Navigate to the project directory:
+   ```bash
+   cd next-level-design-main
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Running Locally
+
+Start the development server:
+```bash
 npm run dev
 ```
+Open [http://localhost:8080](http://localhost:8080) (or the port shown in your terminal) to view the dashboard.
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📁 Project Structure
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/         # Reusable UI components (Buttons, Cards, Inputs)
+│   ├── ui/             # Shadcn primitive components
+│   └── ...
+├── pages/             # Main application pages
+│   └── Index.tsx      # Dashboard layout
+├── hooks/             # Custom React hooks (use-toast, etc.)
+├── lib/               # Utility functions
+└── index.css          # Global styles and Tailwind directives
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## 🔌 Integration with Backend
 
-This project is built with:
+This frontend is designed to visualize data processed by the C++ Spatio-Temporal Engine. 
+- Currently, it utilizes **sample data generation** for demonstration purposes.
+- To connect with the real C++ backend, it expects standard JSON/CSV data formats (integration details in `docs/integation_guide.md`).
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## 🎨 Customization
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+You can customize the theme in `tailwind.config.ts`.
+- **Primary Color**: Indigo (`#6366f1`)
+- **Accent Color**: Pink (`#ec4899`)
+- **Background**: Dark theme defaults
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Built for the Semester 3 DSA Project - Advanced Agentic Coding*
