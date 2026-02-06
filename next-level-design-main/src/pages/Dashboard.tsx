@@ -61,6 +61,29 @@ const Dashboard: React.FC = () => {
         [activeDataset]
     );
 
+    // Filter events for display (Sampling for India to maintain performance)
+    const displayEvents = useMemo(() => {
+        if (activeDataset === 'chicago') return events;
+
+        // India dataset optimization
+        const LIMIT = 15000;
+        if (events.length <= LIMIT) return events;
+
+        const step = Math.ceil(events.length / LIMIT);
+        return events.filter((_, i) => i % step === 0);
+    }, [events, activeDataset]);
+
+    // Calculate generic India count for the tab (so it matches what would be shown)
+    const indiaDisplayCount = useMemo(() => {
+        const total = indianCrimeData.length;
+        const LIMIT = 15000;
+        if (total <= LIMIT) return total;
+        const step = Math.ceil(total / LIMIT);
+        // We can just calculate length directly without filtering the whole array
+        // It's basically ceil(total / step) because we take every nth item starting at 0
+        return Math.ceil(total / step);
+    }, []);
+
     const currentConfig = useMemo(() =>
         DATASET_CONFIGS[activeDataset],
         [activeDataset]
@@ -348,12 +371,12 @@ const Dashboard: React.FC = () => {
                         activeDataset={activeDataset}
                         onDatasetChange={handleDatasetChange}
                         chicagoCount={realCrimeData.length}
-                        indiaCount={indianCrimeData.length}
+                        indiaCount={indiaDisplayCount}
                     />
                     <div className="text-sm text-slate-400">
                         <span className="font-medium text-white">{currentConfig.label}</span>
                         <span className="mx-2">•</span>
-                        <span>{events.length.toLocaleString()} events loaded</span>
+                        <span>{displayEvents.length.toLocaleString()} events loaded</span>
                     </div>
                 </section>
 
@@ -361,8 +384,8 @@ const Dashboard: React.FC = () => {
                 <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                     <StatCard
                         title="Database Status"
-                        value={stats.totalEvents}
-                        subtitle="Events Loaded"
+                        value={displayEvents.length.toLocaleString()}
+                        subtitle="Points on Map"
                         icon={<Download className="w-5 h-5 text-blue-400" />}
                         color="text-blue-400"
                         delay={0.1}
@@ -430,8 +453,15 @@ const Dashboard: React.FC = () => {
                             </>
                         ) : (
                             <InteractiveMap
-                                events={events}
+                                events={displayEvents}
                                 searchResults={searchResults}
+                                onRegionSelect={(bounds) => {
+                                    setParams(prev => ({
+                                        ...prev,
+                                        ...bounds
+                                    }));
+                                    toast.info("Region updated from map selection");
+                                }}
                             />
                         )}
                     </div>
